@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Copyright (c) 2012 Jason Hancock <jsnbyh@gmail.com>
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is furnished
+# to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+#
+# This file is part of the puppet-svn-hooks bundle that can be found
+# at https://github.com/jasonhancock/puppet-svn-hooks
+#
+# Assumptions:
+#
+#    Puppet >= 2.7 is installed on this machine
+#    puppet-lint is installed on this machine
+#    Adjust PATH variable below as appropriate for your environment
+#    Adjust LINTFLAGS as appropriate
+
+
+PATH=/usr/bin:/bin
+LINTFLAGS="--fail-on-warnings"
+
+REPOS="$1"
+TXN="$2"
+TMPFILE=`mktemp`
+
+STATUS=0
+
+# get a list of files changed in this transaction
+FILES=`svnlook changed -t "$TXN" "$REPOS" | awk '/^[^D]/ {print $2}'`
+
+for file in $FILES
+do
+    extension="${file##*.}"
+    svnlook cat -t "$TXN" "$REPOS" "$file" > $TMPFILE
+    if [ $? -ne 0 ] ; then
+        echo "Unable to checkout $file" >&2
+        STATUS=2
+    else
+        case "$extension" in
+            pp)
+                # puppet syntax check
+                puppet parser validate $TMPFILE > /dev/null 2>&1
+                if [ $? -ne 0 ] ; then
+                    echo "Puppet syntax error in $file" >&2
+                    STATUS=2
+                fi
+            
+                # puppet lint check 
+                puppet-lint $LINTFLAGS $TMPFILE > /dev/null 2>&1
+                if [ $? -ne 0 ] ; then
+                    echo "Puppet lint error in $file" >&2
+                    STATUS=2
+                fi
+            ;;
+    
+            erb)
+                # syntax check templates - this doesn't catch a lot of mistakes,
+                # but it should catch gross mistakes
+                erb -x -T - "$TMPFILE" | ruby -c > /dev/null 2>&1
+                if [ $? -ne 0 ] ; then
+                    echo "ERB syntax error in $file" >&2
+                    STATUS=2
+                fi
+            ;;
+        esac
+    fi
+done
+
+# clean up the temp file
+if [ -e "$TMPFILE" ]
+then
+    rm -f $TMPFILE
+fi
+
+exit $STATUS
