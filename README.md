@@ -29,6 +29,6 @@ HOOKS:
 -------
 **pre-commit:**
 
-This pre-commit hook verifies that puppet can parse *.pp files, that templates
-(*.erb) have valid syntax, and that *.pp files pass a puppet-lint check. You may
+This pre-commit hook verifies that puppet can parse \*.pp files, that templates
+(\*.erb) have valid syntax, and that \*.pp files pass a puppet-lint check. You may
 need to adjust the PATH declared in the script to suit your environment.
