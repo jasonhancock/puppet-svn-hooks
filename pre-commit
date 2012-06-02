@@ -41,7 +41,8 @@ TMPFILE=`mktemp`
 STATUS=0
 
 # get a list of files changed in this transaction
-FILES=`svnlook changed -t "$TXN" "$REPOS" | awk '/^[^D]/ {print $2}'`
+# only pull out erb's and pp's since we don't want to throw up when adding directories.
+FILES=`svnlook changed -t "$TXN" "$REPOS" | awk '/^[^D]/ {print $2}'|grep -E "(\.pp$)|(\.erb$)"`
 
 for file in $FILES
 do
@@ -57,6 +58,9 @@ do
                 puppet parser validate $TMPFILE > /dev/null 2>&1
                 if [ $? -ne 0 ] ; then
                     echo "Puppet syntax error in $file" >&2
+                    # Provide some useful output about what you did wrong
+                    OUTPUT=`puppet parser validate --color false $TMPFILE 2>/dev/null` 
+                    echo $OUTPUT |sed "s/\/tmp\/.*:\([0-9]\+\).*/line\ \1/" >&2
                     STATUS=2
                 fi
             
