@@ -32,7 +32,7 @@
 
 
 PATH=/usr/bin:/bin
-LINTFLAGS="--fail-on-warnings"
+LINTFLAGS="--fail-on-warnings --no-autoloader_layout-check"
 
 REPOS="$1"
 TXN="$2"
