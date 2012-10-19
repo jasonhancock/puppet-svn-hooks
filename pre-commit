@@ -59,19 +59,19 @@ do
                 if [ $? -ne 0 ] ; then
                     echo "Puppet syntax error in $file" >&2
                     # Provide some useful output about what you did wrong
-                    OUTPUT=`puppet parser validate --color false $TMPFILE 2>/dev/null` 
+                    OUTPUT=`puppet parser validate --color false $TMPFILE 2>/dev/null`
                     echo $OUTPUT |sed "s/\/tmp\/.*:\([0-9]\+\).*/line\ \1/" >&2
                     STATUS=2
                 fi
-            
-                # puppet lint check 
+
+                # puppet lint check
                 puppet-lint $LINTFLAGS $TMPFILE > /dev/null 2>&1
                 if [ $? -ne 0 ] ; then
                     echo "Puppet lint error in $file" >&2
                     STATUS=2
                 fi
             ;;
-    
+
             erb)
                 # syntax check templates - this doesn't catch a lot of mistakes,
                 # but it should catch gross mistakes
