@@ -75,7 +75,7 @@ do
             erb)
                 # syntax check templates - this doesn't catch a lot of mistakes,
                 # but it should catch gross mistakes
-                erb -x -T - "$TMPFILE" | ruby -c > /dev/null 2>&1
+                erb -P -x -T - "$TMPFILE" | ruby -c > /dev/null 2>&1
                 if [ $? -ne 0 ] ; then
                     echo "ERB syntax error in $file" >&2
                     STATUS=2
