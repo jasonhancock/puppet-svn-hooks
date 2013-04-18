@@ -33,7 +33,7 @@
 
 PATH=/usr/bin:/bin
 LINTFLAGS="--fail-on-warnings --no-autoloader_layout-check"
-
+export HOME=/
 REPOS="$1"
 TXN="$2"
 TMPFILE=`mktemp`
