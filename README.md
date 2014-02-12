@@ -27,10 +27,10 @@ THE SOFTWARE.
 
 Requirements
 ------------
-  * Puppet >= 2.7 is installed on system
-  * puppet-lint ruby gem is installed on system
-  * subversion package is installed on system
-  * Adjust LINTFLAGS variable as appropriate
+  * `puppet >= 2.7` is installed on system
+  * `puppet-lint` ruby gem is installed on system
+  * `subversion` package is installed on system
+  * Adjust `LINTFLAGS` variable as appropriate
 
 HOOKS:
 -------
