@@ -53,8 +53,6 @@ if [[ `which svnlook 2>/dev/null` = "" ]]; then
     exit
 fi
 
-
-
 STATUS="0"
 
 # get a list of files changed in this transaction
