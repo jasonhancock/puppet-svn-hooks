@@ -38,6 +38,23 @@ REPOS="$1"
 TXN="$2"
 TMPFILE=`mktemp`
 
+if [[ `which puppet 2>/dev/null` = "" ]]; then
+    echo "puppet is not installed"
+    exit
+fi
+
+if [[ `which puppet-lint 2>/dev/null` = "" ]]; then
+    echo "puppet-lint is not installed"
+    exit
+fi
+
+if [[ `which svnlook 2>/dev/null` = "" ]]; then
+    echo "subversion is not installed"
+    exit
+fi
+
+
+
 STATUS="0"
 
 # get a list of files changed in this transaction
