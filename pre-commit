@@ -31,47 +31,62 @@
 #    Adjust LINTFLAGS as appropriate
 
 
-PATH=/usr/bin:/bin
+PATH="$PATH:/usr/bin:/bin"
 LINTFLAGS="--fail-on-warnings --no-autoloader_layout-check"
 export HOME=/
 REPOS="$1"
 TXN="$2"
 TMPFILE=`mktemp`
 
-STATUS=0
+if [[ `which puppet 2>/dev/null` = "" ]]; then
+    echo "puppet is not installed"
+    exit
+fi
+
+if [[ `which puppet-lint 2>/dev/null` = "" ]]; then
+    echo "puppet-lint is not installed"
+    exit
+fi
+
+if [[ `which svnlook 2>/dev/null` = "" ]]; then
+    echo "subversion is not installed"
+    exit
+fi
+
+STATUS="0"
 
 # get a list of files changed in this transaction
 # only pull out erb's and pp's since we don't want to throw up when adding directories.
-FILES=`svnlook changed -t "$TXN" "$REPOS" | awk '/^[^D]/ {print $2}'|grep -E "(\.pp$)|(\.erb$)"`
+FILES=`svnlook changed -t "$TXN" "$REPOS" | awk '/^[^D]/ {print $2}'| grep -E "(\.pp$)|(\.erb$)"`
 
 for file in $FILES
 do
     extension="${file##*.}"
     svnlook cat -t "$TXN" "$REPOS" "$file" > $TMPFILE
-    if [ $? -ne 0 ] ; then
+    if [[ $? -ne 0 ]]; then
         echo "Unable to checkout $file" >&2
-        STATUS=2
+        STATUS="2"
     else
         case "$extension" in
             pp)
                 # puppet syntax check
                 puppet parser validate $TMPFILE > /dev/null 2>&1
-                if [ $? -ne 0 ] ; then
+                if [[ $? -ne 0 ]]; then
                     echo "Puppet syntax error in $file:" >&2
                     # Provide some useful output about what you did wrong
                     OUTPUT=`puppet parser validate --color false $TMPFILE 2>&1 | grep -v 'puppet help parser validate'`
                     echo "$OUTPUT" |sed "s/\/tmp\/.*:\([0-9]\+\).*/line\ \1/" | sed 's/^/  /' >&2
-                    STATUS=2
+                    STATUS="2"
                 fi
 
                 # puppet lint check
                 puppet-lint $LINTFLAGS $TMPFILE > /dev/null 2>&1
-                if [ $? -ne 0 ] ; then
+                if [[ $? -ne 0 ]]; then
                     # Provide some useful output about what you did wrong
                     echo "Puppet lint error in $file:" >&2
                     OUTPUT=`puppet-lint $LINTFLAGS $TMPFILE 2>/dev/null`
                     echo "$OUTPUT" | sed 's/^/  /' >&2
-                    STATUS=2
+                    STATUS="2"
                 fi
             ;;
 
@@ -79,11 +94,11 @@ do
                 # syntax check templates - this doesn't catch a lot of mistakes,
                 # but it should catch gross mistakes
                 erb -P -x -T - "$TMPFILE" | ruby -c > /dev/null 2>&1
-                if [ $? -ne 0 ] ; then
+                if [[ $? -ne 0 ]]; then
                     echo "ERB syntax error in $file:" >&2
                     OUTPUT=`erb -P -x -T - "$TMPFILE" | ruby -c 2>&1`
                     echo "$OUTPUT" | sed 's/^/  /' >&2
-                    STATUS=2
+                    STATUS="2"
                 fi
             ;;
         esac
@@ -91,8 +106,7 @@ do
 done
 
 # clean up the temp file
-if [ -e "$TMPFILE" ]
-then
+if [[ -e "$TMPFILE" ]]; then
     rm -f $TMPFILE
 fi
 
