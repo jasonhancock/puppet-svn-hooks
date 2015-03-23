@@ -31,27 +31,25 @@
 #    Adjust LINTFLAGS as appropriate
 
 
+# Set LANG to the same the puppet master runs with
+LANG=C.UTF-8
+
 PATH="$PATH:/usr/bin:/bin"
 LINTFLAGS="--fail-on-warnings --no-autoloader_layout-check"
 export HOME=/
+export LANG
 REPOS="$1"
 TXN="$2"
 TMPFILE=`mktemp`
 
-if [[ `which puppet 2>/dev/null` = "" ]]; then
-    echo "puppet is not installed"
-    exit
-fi
-
-if [[ `which puppet-lint 2>/dev/null` = "" ]]; then
-    echo "puppet-lint is not installed"
-    exit
-fi
-
-if [[ `which svnlook 2>/dev/null` = "" ]]; then
-    echo "subversion is not installed"
-    exit
-fi
+# check for tools
+for i in puppet puppet-lint svnlook
+do
+  if [[ `which $i 2>/dev/null` = "" ]]; then
+      echo "$i is not installed"
+      exit
+  fi
+done
 
 STATUS="0"
 
@@ -61,12 +59,22 @@ FILES=`svnlook changed -t "$TXN" "$REPOS" | awk '/^[^D]/ {print $2}'| grep -E "(
 
 for file in $FILES
 do
+    if svnlook propget -t "$TXN" "$REPOS" puppet-validation:disable "$file" 2>&1 >/dev/null
+    then
+        continue
+    fi
     extension="${file##*.}"
     svnlook cat -t "$TXN" "$REPOS" "$file" > $TMPFILE
     if [[ $? -ne 0 ]]; then
         echo "Unable to checkout $file" >&2
         STATUS="2"
     else
+        if svnlook propget -t "$TXN" "$REPOS" puppet-lint:flags "$file" 2>&1 >/dev/null
+        then
+          XLINTFLAGS=$(for i in `svnlook propget -t "$TXN" "$REPOS" puppet-lint:flags "$file"`; do echo -n "--${i} "; done)
+        else
+          XLINTFLAGS=""
+        fi
         case "$extension" in
             pp)
                 # puppet syntax check
@@ -80,11 +88,11 @@ do
                 fi
 
                 # puppet lint check
-                puppet-lint $LINTFLAGS $TMPFILE > /dev/null 2>&1
+                puppet-lint $LINTFLAGS $XLINTFLAGS $TMPFILE >/dev/null 2>&1
                 if [[ $? -ne 0 ]]; then
                     # Provide some useful output about what you did wrong
                     echo "Puppet lint error in $file:" >&2
-                    OUTPUT=`puppet-lint $LINTFLAGS $TMPFILE 2>/dev/null`
+                    OUTPUT=`puppet-lint $LINTFLAGS $XLINTFLAGS $TMPFILE 2>/dev/null`
                     echo "$OUTPUT" | sed 's/^/  /' >&2
                     STATUS="2"
                 fi
